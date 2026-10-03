@@ -5263,3 +5263,560 @@ Tab5Automation:AddToggle("AutoDestroyEvent", {
         end)
     end,
 })
+--==================================================
+-- TAB 6 - COLLECTION
+--==================================================
+
+local Tab6 = Window:AddTab("Collection", "package")
+
+local Tab6Collection = Tab6:AddLeftGroupbox("Collection")
+local Tab6ESP = Tab6:AddRightGroupbox("ESP")
+local Tab6Notifier = Tab6:AddRightGroupbox("Thông báo")
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+
+--==================================================
+-- HELPERS
+--==================================================
+
+local function GetRoot()
+    local c = LocalPlayer.Character
+    return c and c:FindFirstChild("HumanoidRootPart")
+end
+
+local function GetArenaParts()
+    local result = {}
+    local area = workspace:FindFirstChild("World Map")
+        and workspace["World Map"]:FindFirstChild("SecretBossArea")
+
+    if not area then
+        return result
+    end
+
+    for _, v in ipairs(area:GetDescendants()) do
+        if v.Name:find("Arena") and v:IsA("BasePart") then
+            table.insert(result, v)
+        end
+    end
+
+    return result
+end
+
+--==================================================
+-- Zaja / Destroyer COLLECTION
+--==================================================
+
+Tab6Collection:AddDropdown("ZajaDestroyMode", {
+    Values = {"Tween", "Teleport"},
+    Default = "Tween",
+    Multi = false,
+    Text = "Zaja Destorys [Collection]",
+})
+
+Tab6Collection:AddToggle("ZajaDestroyCollection", {
+    Text = "Zaja Destorys [Collection]",
+    Default = false,
+
+    Callback = function(Value)
+        if not Value then
+            return
+        end
+
+        task.spawn(function()
+            while Library.Toggles.ZajaDestroyCollection.Value do
+
+                local EventMobs =
+                    workspace:FindFirstChild("World Mobs")
+                    and workspace["World Mobs"]:FindFirstChild("Event Mobs")
+
+                -- Có Zaja hoặc Destroyer -> DỪNG teleport
+                local Stop =
+                    EventMobs
+                    and (
+                        EventMobs:FindFirstChild("Zaja")
+                        or EventMobs:FindFirstChild("Destroyer")
+                        or EventMobs:FindFirstChild("Destorys")
+                    )
+
+                if not Stop then
+                    local Root = GetRoot()
+
+                    if Root then
+                        for _, Arena in ipairs(GetArenaParts()) do
+
+                            if not Library.Toggles.ZajaDestroyCollection.Value then
+                                break
+                            end
+
+                            local Mode =
+                                Library.Options.ZajaDestroyMode.Value
+
+                            if Mode == "Teleport" then
+                                Root.CFrame =
+                                    Arena.CFrame + Vector3.new(0, 5, 0)
+
+                            else
+                                local Distance =
+                                    (Arena.Position - Root.Position).Magnitude
+
+                                local Time =
+                                    math.max(Distance / 300, 0.05)
+
+                                local Tween =
+                                    TweenService:Create(
+                                        Root,
+                                        TweenInfo.new(
+                                            Time,
+                                            Enum.EasingStyle.Linear
+                                        ),
+                                        {
+                                            CFrame =
+                                                Arena.CFrame
+                                                + Vector3.new(0, 5, 0)
+                                        }
+                                    )
+
+                                Tween:Play()
+                                Tween.Completed:Wait()
+                            end
+                        end
+                    end
+                end
+
+                task.wait(10)
+            end
+        end)
+    end,
+})
+
+--==================================================
+-- AUTO COLLECT V2
+--==================================================
+
+Tab6Collection:AddToggle("AutoCollectV2", {
+    Text = "Auto Collect v2",
+    Default = false,
+
+    Callback = function(Value)
+        if not Value then
+            return
+        end
+
+        task.spawn(function()
+            while Library.Toggles.AutoCollectV2.Value do
+
+                local Root = GetRoot()
+
+                if Root then
+                    for _, v in ipairs(workspace:GetDescendants()) do
+
+                        if v:IsA("ProximityPrompt") then
+
+                            local Part =
+                                v.Parent:IsA("BasePart")
+                                and v.Parent
+
+                            if Part then
+                                local Distance =
+                                    (Part.Position - Root.Position).Magnitude
+
+                                if Distance <= 30 then
+                                    pcall(function()
+                                        fireproximityprompt(v)
+                                    end)
+                                end
+                            end
+                        end
+                    end
+                end
+
+                task.wait(1)
+            end
+        end)
+    end,
+})
+
+--==================================================
+-- AUTO SHOP
+--==================================================
+
+Tab6Collection:AddToggle("AutoShop", {
+    Text = "Auto Shop",
+    Default = false,
+
+    Callback = function(Value)
+        if not Value then
+            return
+        end
+
+        task.spawn(function()
+            while Library.Toggles.AutoShop.Value do
+
+                -- Kích hoạt các shop prompt gần người chơi
+                local Root = GetRoot()
+
+                if Root then
+                    for _, v in ipairs(workspace:GetDescendants()) do
+
+                        if v:IsA("ProximityPrompt") then
+
+                            local Part =
+                                v.Parent:IsA("BasePart")
+                                and v.Parent
+
+                            if Part
+                                and (Part.Position - Root.Position).Magnitude <= 30
+                            then
+                                local Text =
+                                    string.lower(
+                                        v.ActionText .. " " .. v.ObjectText
+                                    )
+
+                                if Text:find("shop")
+                                    or Text:find("buy")
+                                then
+                                    pcall(function()
+                                        fireproximityprompt(v)
+                                    end)
+                                end
+                            end
+                        end
+                    end
+                end
+
+                task.wait(180)
+            end
+        end)
+    end,
+})
+
+--==================================================
+-- ESP STARDUST ORB
+--==================================================
+
+local OrbColor = Color3.fromRGB(255, 255, 0)
+
+Tab6ESP:AddColorPicker("OrbESPColor", {
+    Default = OrbColor,
+    Title = "Orb ESP Color",
+
+    Callback = function(Value)
+        OrbColor = Value
+    end,
+})
+
+Tab6ESP:AddToggle("ESPStardustOrb", {
+    Text = "ESP Stardust Orb",
+    Default = false,
+
+    Callback = function(Value)
+
+        local Folder =
+            workspace:FindFirstChild("Misc")
+            and workspace.Misc:FindFirstChild("DragonSphereSpawns")
+
+        if not Folder then
+            return
+        end
+
+        if not Value then
+            for _, v in ipairs(Folder:GetDescendants()) do
+                local h = v:FindFirstChild("Tab6OrbESP")
+                if h then
+                    h:Destroy()
+                end
+            end
+            return
+        end
+
+        task.spawn(function()
+            while Library.Toggles.ESPStardustOrb.Value do
+
+                for _, Part in ipairs(Folder:GetChildren()) do
+
+                    if Part:IsA("BasePart") then
+
+                        local HasMesh =
+                            Part:FindFirstChildWhichIsA("Mesh")
+                            or Part:FindFirstChildWhichIsA("SpecialMesh")
+                            or Part:IsA("MeshPart")
+
+                        if HasMesh and not Part:FindFirstChild("Tab6OrbESP") then
+
+                            local Highlight =
+                                Instance.new("Highlight")
+
+                            Highlight.Name = "Tab6OrbESP"
+                            Highlight.Adornee = Part
+                            Highlight.FillColor = OrbColor
+                            Highlight.OutlineColor = OrbColor
+                            Highlight.FillTransparency = 0.45
+                            Highlight.OutlineTransparency = 0
+
+                            Highlight.Parent = Part
+                        end
+                    end
+                end
+
+                -- cập nhật màu
+                for _, Part in ipairs(Folder:GetChildren()) do
+                    local H = Part:FindFirstChild("Tab6OrbESP")
+
+                    if H and H:IsA("Highlight") then
+                        H.FillColor = OrbColor
+                        H.OutlineColor = OrbColor
+                    end
+                end
+
+                task.wait(1)
+            end
+        end)
+    end,
+})
+
+--==================================================
+-- HP NOTIFY / ESP
+--==================================================
+
+Tab6Notifier:AddDropdown("HPDisplayMode", {
+    Values = {"Number", "Percent"},
+    Default = "Number",
+    Multi = false,
+    Text = "HP Display",
+})
+
+local HPFolder = Instance.new("Folder")
+HPFolder.Name = "Tab6_HP_ESP"
+HPFolder.Parent = workspace
+
+Tab6Notifier:AddToggle("NotifyHP", {
+    Text = "Thông báo HP",
+    Default = false,
+
+    Callback = function(Value)
+
+        if not Value then
+            HPFolder:ClearAllChildren()
+            return
+        end
+
+        task.spawn(function()
+            while Library.Toggles.NotifyHP.Value do
+
+                local EventMobs =
+                    workspace:FindFirstChild("World Mobs")
+                    and workspace["World Mobs"]:FindFirstChild("Event Mobs")
+
+                if EventMobs then
+                    for _, Mob in ipairs(EventMobs:GetChildren()) do
+
+                        local Humanoid =
+                            Mob:FindFirstChildOfClass("Humanoid")
+
+                        local Root =
+                            Mob:FindFirstChild("HumanoidRootPart")
+                            or Mob:FindFirstChildWhichIsA("BasePart")
+
+                        if Humanoid and Root then
+
+                            local Gui =
+                                HPFolder:FindFirstChild(Mob.Name)
+
+                            if not Gui then
+                                Gui = Instance.new("BillboardGui")
+                                Gui.Name = Mob.Name
+                                Gui.Size = UDim2.fromOffset(180, 35)
+                                Gui.StudsOffset = Vector3.new(0, 4, 0)
+                                Gui.AlwaysOnTop = true
+                                Gui.Adornee = Root
+                                Gui.Parent = HPFolder
+
+                                local Label = Instance.new("TextLabel")
+                                Label.Name = "HP"
+                                Label.Size = UDim2.fromScale(1, 1)
+                                Label.BackgroundTransparency = 1
+                                Label.TextScaled = true
+                                Label.TextStrokeTransparency = 0
+                                Label.Parent = Gui
+                            end
+
+                            local Label = Gui.HP
+
+                            local Mode =
+                                Library.Options.HPDisplayMode.Value
+
+                            if Mode == "Percent" then
+                                local Max = Humanoid.MaxHealth
+
+                                local Percent =
+                                    Max > 0
+                                    and math.floor(
+                                        (Humanoid.Health / Max) * 100
+                                    )
+                                    or 0
+
+                                Label.Text =
+                                    Mob.Name .. " | " .. Percent .. "%"
+                            else
+                                Label.Text =
+                                    Mob.Name
+                                    .. " | "
+                                    .. math.floor(Humanoid.Health)
+                            end
+                        end
+                    end
+                end
+
+                task.wait(0.2)
+            end
+
+            HPFolder:ClearAllChildren()
+        end)
+    end,
+})
+
+-- Persistent HP ESP
+Tab6Notifier:AddToggle("PersistentHP", {
+    Text = "Persistent HP",
+    Default = false,
+
+    Callback = function(Value)
+        if Library.Toggles.NotifyHP then
+            Library.Toggles.NotifyHP:SetValue(Value)
+        end
+    end,
+})
+
+--==================================================
+-- SHOW ENERGY
+--==================================================
+
+Tab6Notifier:AddToggle("ShowEnergy", {
+    Text = "Show Energy",
+    Default = false,
+
+    Callback = function(Value)
+
+        if not Value then
+            for _, v in ipairs(workspace:GetDescendants()) do
+                local Gui = v:FindFirstChild("Tab6EnergyESP")
+
+                if Gui then
+                    Gui:Destroy()
+                end
+            end
+
+            return
+        end
+
+        task.spawn(function()
+
+            while Library.Toggles.ShowEnergy.Value do
+
+                local Characters =
+                    workspace:FindFirstChild("Characters")
+
+                if Characters then
+                    for _, Character in ipairs(Characters:GetChildren()) do
+
+                        local Status =
+                            Character:FindFirstChild("Status")
+
+                        local Energy =
+                            Status
+                            and Status:FindFirstChild("CurrentEnergy")
+
+                        local MaxEnergy =
+                            Status
+                            and Status:FindFirstChild("MaxEnergy")
+
+                        local Root =
+                            Character:FindFirstChild("HumanoidRootPart")
+
+                        if Energy and MaxEnergy and Root then
+
+                            local Gui =
+                                Root:FindFirstChild("Tab6EnergyESP")
+
+                            if not Gui then
+
+                                Gui = Instance.new("BillboardGui")
+                                Gui.Name = "Tab6EnergyESP"
+                                Gui.Size = UDim2.fromOffset(150, 30)
+                                Gui.StudsOffset = Vector3.new(0, 3, 0)
+                                Gui.AlwaysOnTop = true
+                                Gui.Parent = Root
+
+                                local Label = Instance.new("TextLabel")
+                                Label.Name = "Energy"
+                                Label.Size = UDim2.fromScale(1, 1)
+                                Label.BackgroundTransparency = 1
+                                Label.TextScaled = true
+                                Label.TextStrokeTransparency = 0
+                                Label.Parent = Gui
+                            end
+
+                            Gui.Energy.Text =
+                                "Energy: "
+                                .. math.floor(Energy.Value)
+                                .. " / "
+                                .. math.floor(MaxEnergy.Value)
+                        end
+                    end
+                end
+
+                task.wait(0.5)
+            end
+        end)
+    end,
+})
+
+--==================================================
+-- CLEAR DUNGEON COUNTER
+--==================================================
+
+local ClearCount = 0
+local SeenMobs = {}
+
+local ClearLabel = Tab6Notifier:AddLabel("Clear Dungeon: 0")
+
+task.spawn(function()
+
+    while true do
+
+        local EventMobs =
+            workspace:FindFirstChild("World Mobs")
+            and workspace["World Mobs"]:FindFirstChild("Event Mobs")
+
+        if EventMobs then
+
+            for _, Mob in ipairs(EventMobs:GetChildren()) do
+
+                local Humanoid =
+                    Mob:FindFirstChildOfClass("Humanoid")
+
+                if Humanoid then
+                    SeenMobs[Mob] = Humanoid.Health <= 0
+                end
+            end
+
+            for Mob, WasDead in pairs(SeenMobs) do
+
+                if WasDead and not Mob.Parent then
+                    ClearCount += 1
+                    SeenMobs[Mob] = nil
+
+                    pcall(function()
+                        ClearLabel:SetText(
+                            "Clear Dungeon: " .. ClearCount
+                        )
+                    end)
+                end
+            end
+        end
+
+        task.wait(0.2)
+    end
+end)
